@@ -13,6 +13,7 @@ INSTALL_DIR="/opt/orderflow"
 TMP_SRC="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICE_NAME="orderflow"
 SERVICE_FILE="deploy/orderflow.service"
+SERVICE_USER="${SUDO_USER:-$(whoami)}"
 
 _uv_bin() {
     if command -v uv &>/dev/null; then
@@ -94,8 +95,8 @@ fi
 echo "→ Installing dependencies..."
 _sync_deps
 
-# 5. Права для ubuntu (User= в сервисе)
-sudo chown -R ubuntu:ubuntu "$INSTALL_DIR"
+# 5. Права для текущего пользователя (User= в сервисе)
+sudo chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 if [ -f "$INSTALL_DIR/.env" ]; then
     sudo chmod 600 "$INSTALL_DIR/.env"
 fi
@@ -114,8 +115,9 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
 fi
 
 # 7. systemd
-echo "→ Installing systemd unit..."
-sudo cp "$INSTALL_DIR/$SERVICE_FILE" "/etc/systemd/system/$SERVICE_NAME.service"
+echo "→ Installing systemd unit (User=$SERVICE_USER)..."
+sudo sed "s/^User=.*/User=$SERVICE_USER/" "$INSTALL_DIR/$SERVICE_FILE" \
+    | sudo tee "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME" 2>/dev/null || true
 
