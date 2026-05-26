@@ -1,0 +1,5 @@
+{
+    "symbols": ["BTC", "ETH", "SOL"],
+    "exchanges": ["binance", "bybit", "hyperliquid", "okx"],
+    "default_tf": "15m"
+}

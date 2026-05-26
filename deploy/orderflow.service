@@ -1,0 +1,16 @@
+[Unit]
+Description=Quantilan OrderFlow (WS ingest + REST snapshots)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/orderflow
+EnvironmentFile=/opt/orderflow/.env
+ExecStart=/opt/orderflow/.venv/bin/python orderflow_core.py --settings settings/settings_orderflow.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
