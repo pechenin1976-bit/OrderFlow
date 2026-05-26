@@ -59,7 +59,51 @@ cd /tmp/OrderFlow && git pull && bash deploy/setup_vps.sh
 
 ### nginx
 
-See `deploy/nginx-orderflow.conf.example` — proxies `/api/orderflow/` → `127.0.0.1:8080`.
+OrderFlow runs on the **same VPS as the license server** (`license.quantilan.com`). The existing nginx `server {}` block already handles SSL via Certbot. Add the OrderFlow location **before** the existing `location / {}` block:
+
+```bash
+sudo nano /etc/nginx/sites-available/license.quantilan.com
+```
+
+```nginx
+server {
+    server_name license.quantilan.com;
+
+    # --- OrderFlow (add this block) ---
+    location /api/orderflow/ {
+        proxy_pass http://127.0.0.1:8080/api/v1/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 30s;
+    }
+
+    # --- License server (existing) ---
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # SSL managed by Certbot
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Verify:
+
+```bash
+curl -s -H "Authorization: Bearer dev-token-change-me" \
+  "https://license.quantilan.com/api/orderflow/snapshot?symbol=BTC&tf=15m" | head -c 200
+```
 
 ### Logs
 
