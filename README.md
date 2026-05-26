@@ -33,7 +33,41 @@ curl -H "Authorization: Bearer dev-token-change-me" \
 
 ## Deploy
 
-- VPS: `deploy/orderflow.service`, `deploy/nginx-orderflow.conf.example`
+### First deploy
+
+```bash
+git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
+cd /tmp/OrderFlow && bash deploy/setup_vps.sh
+```
+
+The script syncs code to `/opt/orderflow`, runs `uv sync`, installs and enables the systemd unit, and restarts the service. On first run it will prompt to create `.env` if it doesn't exist.
+
+```bash
+# Minimum .env
+ORDERFLOW_LICENSE_SERVICE_TOKEN=<same as SERVICE_TOKEN in license server>
+ORDERFLOW_LICENSE_SERVER_URL=http://127.0.0.1:8000
+ORDERFLOW_API_KEYS=dev-token-change-me
+```
+
+### Update
+
+```bash
+cd /tmp/OrderFlow && git pull && bash deploy/setup_vps.sh
+```
+
+`.env` and `settings/` are never overwritten by the script.
+
+### nginx
+
+See `deploy/nginx-orderflow.conf.example` — proxies `/api/orderflow/` → `127.0.0.1:8080`.
+
+### Logs
+
+```bash
+sudo journalctl -u orderflow -f
+sudo systemctl status orderflow
+```
+
 - Site: `quantilan/www/orderflow.html` polls `/api/orderflow/snapshot` via reverse proxy
 
 ## Signals (optional)
