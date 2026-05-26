@@ -5,6 +5,6 @@
         "INJ", "SUI", "ATOM", "HBAR", "AAVE", "TON", "ETC", "LDO", "ENA", "PEPE",
         "TIA", "TAO", "ONDO"
     ],
-    "exchanges": ["binance", "bybit", "hyperliquid", "okx"],
+    "exchanges": ["binance", "bybit", "hyperliquid", "okx", "binance_spot", "bybit_spot", "okx_spot"],
     "default_tf": "15m"
 }
