@@ -14,6 +14,17 @@ API_KEYS = [
     if k.strip()
 ]
 
+# License server (тот же ключ, что выдаёт @quantilan_bot)
+LICENSE_SERVER_URL = os.getenv("ORDERFLOW_LICENSE_SERVER_URL", "http://127.0.0.1:8000")
+LICENSE_SERVICE_TOKEN = os.getenv("ORDERFLOW_LICENSE_SERVICE_TOKEN", "")
+LICENSE_CACHE_SEC = int(os.getenv("ORDERFLOW_LICENSE_CACHE_SEC", "60"))
+LICENSE_VALIDATE = os.getenv("ORDERFLOW_LICENSE_VALIDATE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+CORS_ENABLED = os.getenv("ORDERFLOW_CORS", "true").lower() in ("1", "true", "yes")
+
 SIGNALS_SOCK = os.getenv("ORDERFLOW_SIGNALS_SOCK", "/tmp/signals.sock")
 SEND_SIGNALS = os.getenv("ORDERFLOW_SEND_SIGNALS", "false").lower() in ("1", "true", "yes")
 
@@ -26,9 +37,41 @@ TF_SECONDS = {
     "1w": 604800,
 }
 
-DEFAULT_SYMBOLS = ["BTC", "ETH", "SOL"]
+# Как agent/agent/coins.py::_BUILTIN_COINS (top-30+ дефолт агента)
+DEFAULT_SYMBOLS = [
+    "BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX", "TRX", "DOT",
+    "LINK", "POL", "LTC", "BCH", "NEAR", "APT", "UNI", "ICP", "ARB", "OP",
+    "INJ", "SUI", "ATOM", "HBAR", "AAVE", "TON", "ETC", "LDO", "ENA", "PEPE",
+    "TIA", "TAO", "ONDO",
+]
+
+# Маппинги coin → биржевое имя (agent/exchanges.json)
+_SCALED_1000 = {
+    "PEPE": "1000PEPE",
+    "BONK": "1000BONK",
+    "SHIB": "1000SHIB",
+    "FLOKI": "1000FLOKI",
+    "LUNC": "1000LUNC",
+}
+BINANCE_SYMBOL_MAP = dict(_SCALED_1000)
+BYBIT_SYMBOL_MAP = dict(_SCALED_1000)
+HYPERLIQUID_SYMBOL_MAP = {
+    "PEPE": "kPEPE",
+    "BONK": "kBONK",
+    "SHIB": "kSHIB",
+    "FLOKI": "kFLOKI",
+    "LUNC": "kLUNC",
+}
+OKX_SYMBOL_MAP: dict[str, str] = {}
+
+BYBIT_WS_SUB_BATCH = 10
 DEFAULT_TF = "15m"
-DEFAULT_BARS_COUNT = 120
+SNAPSHOT_BARS = int(os.getenv("ORDERFLOW_SNAPSHOT_BARS", "11"))
+DEFAULT_BARS_COUNT = SNAPSHOT_BARS
+# Профиль ликвидности: ±N% от цены (UI: 1 / 3 / 5), M ступеней в каждую сторону.
+PROFILE_RANGE_PCT = float(os.getenv("ORDERFLOW_PROFILE_RANGE_PCT", "1"))
+PROFILE_RANGE_CHOICES = (1.0, 3.0, 5.0)
+PROFILE_STEPS = int(os.getenv("ORDERFLOW_PROFILE_STEPS", "10"))
 BOOK_DEPTH_LEVELS = 50
 
 # Композиция зон ликвидности

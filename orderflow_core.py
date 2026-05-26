@@ -20,6 +20,7 @@ load_dotenv(ROOT / ".env")
 import config
 from src.api.server import start_api
 from src.collectors.registry import start_all
+from src.history.bootstrap import seed_all
 from src.snapshot.publisher import publish_loop
 from src.state.market_state import MarketState
 
@@ -42,6 +43,10 @@ async def main_async(settings: dict) -> None:
     default_tf = settings.get("default_tf", config.DEFAULT_TF)
 
     state = MarketState(symbols)
+    from src.symbols.volume_rank import get_volumes
+
+    await get_volumes(symbols)
+    await seed_all(state, symbols, exchanges, default_tf)
     collector_tasks = start_all(state, symbols, enabled=exchanges)
     publisher_task = asyncio.create_task(publish_loop(state, default_tf))
     api_runner = await start_api(state)

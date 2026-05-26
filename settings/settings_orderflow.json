@@ -1,5 +1,10 @@
 {
-    "symbols": ["BTC", "ETH", "SOL"],
+    "symbols": [
+        "BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX", "TRX", "DOT",
+        "LINK", "POL", "LTC", "BCH", "NEAR", "APT", "UNI", "ICP", "ARB", "OP",
+        "INJ", "SUI", "ATOM", "HBAR", "AAVE", "TON", "ETC", "LDO", "ENA", "PEPE",
+        "TIA", "TAO", "ONDO"
+    ],
     "exchanges": ["binance", "bybit", "hyperliquid", "okx"],
     "default_tf": "15m"
 }
