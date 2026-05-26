@@ -7,7 +7,7 @@ from typing import List, Optional
 
 import aiohttp
 
-from src.symbols.instruments import native_coin, okx_inst_id, usdt_instrument
+from src.symbols.instruments import native_coin, okx_inst_id, okx_spot_inst_id, usdt_instrument
 
 logger = logging.getLogger(__name__)
 
@@ -109,10 +109,60 @@ async def fetch_hyperliquid(
     return out[-limit:]
 
 
+async def fetch_binance_spot(session: aiohttp.ClientSession, symbol: str, tf: str, limit: int) -> List[List[float]]:
+    sym = usdt_instrument("binance_spot", symbol)
+    url = "https://api.binance.com/api/v3/klines"
+    params = {"symbol": sym, "interval": tf, "limit": limit}
+    async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as r:
+        if r.status != 200:
+            logger.warning("[history] binance_spot %s HTTP %s", sym, r.status)
+            return []
+        rows = await r.json()
+    out: List[List[float]] = []
+    for row in rows:
+        out.append(_bar(int(row[0]) // 1000, float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5])))
+    return out
+
+
+async def fetch_bybit_spot(session: aiohttp.ClientSession, symbol: str, tf: str, limit: int) -> List[List[float]]:
+    interval = _BYBIT_TF.get(tf)
+    if not interval:
+        return []
+    sym = usdt_instrument("bybit_spot", symbol)
+    url = "https://api.bybit.com/v5/market/kline"
+    params = {"category": "spot", "symbol": sym, "interval": interval, "limit": limit}
+    async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as r:
+        data = await r.json()
+    rows = (data.get("result") or {}).get("list") or []
+    out: List[List[float]] = []
+    for row in reversed(rows):
+        out.append(_bar(int(row[0]) // 1000, float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5])))
+    return out
+
+
+async def fetch_okx_spot(session: aiohttp.ClientSession, symbol: str, tf: str, limit: int) -> List[List[float]]:
+    bar = _OKX_TF.get(tf)
+    if not bar:
+        return []
+    inst = okx_spot_inst_id(symbol)
+    url = "https://www.okx.com/api/v5/market/candles"
+    params = {"instId": inst, "bar": bar, "limit": str(limit)}
+    async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as r:
+        data = await r.json()
+    rows = data.get("data") or []
+    out: List[List[float]] = []
+    for row in reversed(rows):
+        out.append(_bar(int(row[0]) // 1000, float(row[1]), float(row[2]), float(row[3]), float(row[4]), float(row[5])))
+    return out
+
+
 _FETCHERS = {
     "binance": fetch_binance,
+    "binance_spot": fetch_binance_spot,
     "bybit": fetch_bybit,
+    "bybit_spot": fetch_bybit_spot,
     "okx": fetch_okx,
+    "okx_spot": fetch_okx_spot,
     "hyperliquid": fetch_hyperliquid,
 }
 

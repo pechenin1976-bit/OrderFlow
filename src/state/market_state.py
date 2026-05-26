@@ -13,7 +13,7 @@ from src.compose.liquidity import compose_liquidity_zones
 from src.compose.volume_profile import build_volume_profile
 
 
-EXCHANGES = ("binance", "bybit", "hyperliquid", "okx")
+EXCHANGES = ("binance", "bybit", "hyperliquid", "okx", "binance_spot", "bybit_spot", "okx_spot")
 
 
 @dataclass

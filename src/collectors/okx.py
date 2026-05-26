@@ -1,4 +1,4 @@
-"""OKX swap: trades + books5."""
+"""OKX swap + spot: trades + books5."""
 from __future__ import annotations
 
 import json
@@ -57,3 +57,12 @@ class OkxCollector(BaseCollector):
                             bids = [(float(p), float(q)) for p, q, *_ in row.get("bids", [])]
                             asks = [(float(p), float(q)) for p, q, *_ in row.get("asks", [])]
                             st.book.replace(bids, asks, int(row.get("ts", 0)))
+
+
+class OkxSpotCollector(OkxCollector):
+    """OKX spot: trades + books5, instId = {BASE}-USDT (без SWAP)."""
+
+    exchange_id = "okx_spot"
+
+    def _inst_id(self, sym: str) -> str:
+        return f"{sym.upper()}-USDT"

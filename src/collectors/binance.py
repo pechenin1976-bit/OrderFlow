@@ -1,4 +1,4 @@
-"""Binance USD-M: aggTrade + depth20@100ms (combined stream)."""
+"""Binance USD-M futures + spot: aggTrade + depth20@100ms (combined stream)."""
 
 from __future__ import annotations
 
@@ -161,5 +161,28 @@ class BinanceCollector(BaseCollector):
 
         base = from_native("binance", str(raw))
 
+        return base if base in self.symbols else ""
+
+
+class BinanceSpotCollector(BinanceCollector):
+    """Binance spot: aggTrade + depth20@100ms через stream.binance.com."""
+
+    exchange_id = "binance_spot"
+
+    def __init__(self, state, symbols: List[str]):
+        # Вызываем BaseCollector напрямую, минуя BinanceCollector.__init__,
+        # чтобы использовать spot-URL и spot-маппинг (без 1000x).
+        from src.collectors.base import BaseCollector
+        BaseCollector.__init__(self, state, symbols)
+        streams = []
+        for sym in self.symbols:
+            s = usdt_instrument("binance_spot", sym).lower()
+            streams.append(f"{s}@aggTrade")
+            streams.append(f"{s}@depth20@100ms")
+        self._url = "wss://stream.binance.com:9443/stream?streams=" + "/".join(streams)
+
+    def _sym_from_stream(self, stream: str, data: dict) -> str:
+        raw = data.get("s") or stream.split("@")[0]
+        base = from_native("binance_spot", str(raw))
         return base if base in self.symbols else ""
 

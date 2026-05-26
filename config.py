@@ -64,6 +64,11 @@ HYPERLIQUID_SYMBOL_MAP = {
 }
 OKX_SYMBOL_MAP: dict[str, str] = {}
 
+# Spot: нет масштабирования 1000x (PEPE торгуется как PEPEUSDT на споте)
+BINANCE_SPOT_SYMBOL_MAP: dict[str, str] = {}
+BYBIT_SPOT_SYMBOL_MAP: dict[str, str] = {}
+OKX_SPOT_SYMBOL_MAP: dict[str, str] = {}
+
 BYBIT_WS_SUB_BATCH = 10
 DEFAULT_TF = "15m"
 SNAPSHOT_BARS = int(os.getenv("ORDERFLOW_SNAPSHOT_BARS", "11"))
