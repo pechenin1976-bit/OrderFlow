@@ -47,19 +47,27 @@ async def _bybit(session: aiohttp.ClientSession, symbols: list[str]) -> Dict[str
 
 
 async def _okx(session: aiohttp.ClientSession, symbols: list[str]) -> Dict[str, float]:
-    rev = {okx_inst_id(s): s for s in symbols}
-    async with session.get(
-        "https://www.okx.com/api/v5/market/tickers",
-        params={"instType": "SWAP"},
-        timeout=_TIMEOUT,
-    ) as r:
-        data = await r.json()
-    rows = data.get("data") or []
-    return {
-        rev[row["instId"]]: float(row["fundingRate"])
-        for row in rows
-        if row.get("instId") in rev and row.get("fundingRate") not in (None, "")
-    }
+    # /api/v5/market/tickers does not include fundingRate — use dedicated endpoint per symbol
+    sem = asyncio.Semaphore(8)
+
+    async def _one(sym: str) -> tuple[str, float | None]:
+        async with sem:
+            try:
+                async with session.get(
+                    "https://www.okx.com/api/v5/public/funding-rate",
+                    params={"instId": okx_inst_id(sym)},
+                    timeout=_TIMEOUT,
+                ) as r:
+                    data = await r.json()
+                items = data.get("data") or []
+                if items and items[0].get("fundingRate") not in (None, ""):
+                    return sym, float(items[0]["fundingRate"])
+            except Exception as e:
+                logger.debug("[funding] okx %s: %s", sym, e)
+        return sym, None
+
+    pairs = await asyncio.gather(*[_one(s) for s in symbols])
+    return {sym: rate for sym, rate in pairs if rate is not None}
 
 
 async def _hyperliquid(session: aiohttp.ClientSession, symbols: list[str]) -> Dict[str, float]:
