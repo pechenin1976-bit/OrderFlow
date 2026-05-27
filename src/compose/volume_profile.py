@@ -100,14 +100,18 @@ def build_volume_profile(
         if i >= 0:
             buckets[i]["ask"] += qty
 
-    max_total = 0.0
+    max_total_usdt = 0.0
     for b in buckets:
         b["bid"] = round(b["bid"], 6)
         b["ask"] = round(b["ask"], 6)
         b["total"] = b["bid"] + b["ask"]
-        max_total = max(max_total, b["total"])
+        px = b["price"]
+        b["bid_usdt"] = b["bid"] * px
+        b["ask_usdt"] = b["ask"] * px
+        b["total_usdt"] = b["bid_usdt"] + b["ask_usdt"]
+        max_total_usdt = max(max_total_usdt, b["total_usdt"])
 
-    if max_total <= 0:
+    if max_total_usdt <= 0:
         return empty
 
     prec = price_precision(ref)
@@ -120,7 +124,10 @@ def build_volume_profile(
             "bid": b["bid"],
             "ask": b["ask"],
             "total": b["total"],
-            "total_norm": round(_sqrt_norm(b["total"], max_total), 1),
+            "bid_usdt": round(b["bid_usdt"], 2),
+            "ask_usdt": round(b["ask_usdt"], 2),
+            "total_usdt": round(b["total_usdt"], 2),
+            "total_norm": round(_sqrt_norm(b["total_usdt"], max_total_usdt), 1),
             "bid_share": round(bid_share, 1),
             "dist_pct": round((b["price"] - ref) / ref * 100.0, 3),
             "at_mid": at_mid,
@@ -140,5 +147,7 @@ def build_volume_profile(
         "n_levels": len(bid_levels) + len(ask_levels),
         "source": "orderbook",
         "norm": "sqrt",
+        "max_total_usdt": round(max_total_usdt, 2),
+        "volume_unit": "usdt",
         "levels": levels,
     }

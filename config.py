@@ -73,9 +73,9 @@ BYBIT_WS_SUB_BATCH = 10
 DEFAULT_TF = "15m"
 SNAPSHOT_BARS = int(os.getenv("ORDERFLOW_SNAPSHOT_BARS", "11"))
 DEFAULT_BARS_COUNT = SNAPSHOT_BARS
-# Профиль ликвидности: ±N% от цены (UI: 1 / 3 / 5), M ступеней в каждую сторону.
-PROFILE_RANGE_PCT = float(os.getenv("ORDERFLOW_PROFILE_RANGE_PCT", "1"))
-PROFILE_RANGE_CHOICES = (1.0, 3.0, 5.0)
+# Профиль ликвидности: ±N% от цены (UI: 0.8 / 2.5 / 4 — ~20% уже 1/3/5)
+PROFILE_RANGE_PCT = float(os.getenv("ORDERFLOW_PROFILE_RANGE_PCT", "0.8"))
+PROFILE_RANGE_CHOICES = (0.8, 2.5, 4.0)
 PROFILE_STEPS = int(os.getenv("ORDERFLOW_PROFILE_STEPS", "10"))
 BOOK_DEPTH_LEVELS = 50
 
