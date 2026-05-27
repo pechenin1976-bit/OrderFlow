@@ -53,10 +53,17 @@ def create_app(state: MarketState) -> web.Application:
         )
         return web.json_response(snap)
 
+    async def funding(_request: web.Request) -> web.Response:
+        return web.json_response({
+            "rates": state.funding_rates,
+            "symbols": state.symbols,
+        })
+
     app.router.add_get("/health", health)
     app.router.add_get("/api/v1/health", health)
     app.router.add_get("/api/v1/symbols", symbols)
     app.router.add_get("/api/v1/snapshot", snapshot)
+    app.router.add_get("/api/v1/funding", funding)
     return app
 
 
