@@ -11,6 +11,7 @@ from src.bars.ohlcv import MultiTfBars
 from src.book.order_book import LocalOrderBook
 from src.compose.liquidity import compose_liquidity_zones
 from src.compose.volume_profile import build_volume_profile
+from src.symbols.price_scale import scale_exchange_snapshot
 
 
 EXCHANGES = ("binance", "bybit", "hyperliquid", "okx", "binance_spot", "bybit_spot", "okx_spot")
@@ -125,7 +126,9 @@ class MarketState:
         await self._ensure_history(sym, tf, refresh=refresh_history)
         exchanges: Dict[str, Any] = {}
         for ex, st in self._states[sym].items():
-            ex_snap = st.snapshot_exchange(tf, bars_count, range_pct)
+            ex_snap = scale_exchange_snapshot(
+                ex, sym, st.snapshot_exchange(tf, bars_count, range_pct)
+            )
             fr = self.funding_rates.get(ex, {}).get(sym)
             if fr is not None:
                 ex_snap["funding_rate"] = fr

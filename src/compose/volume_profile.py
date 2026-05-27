@@ -5,6 +5,19 @@ import math
 from typing import Any, Dict, List, Tuple
 
 
+def price_precision(ref: float) -> int:
+    """Знаков после запятой для подписи уровней профиля."""
+    if ref >= 1000:
+        return 2
+    if ref >= 1:
+        return 4
+    if ref >= 0.01:
+        return 6
+    if ref >= 0.0001:
+        return 8
+    return 10
+
+
 def _sqrt_norm(value: float, max_val: float, min_pct: float = 4.0) -> float:
     if value <= 0 or max_val <= 0:
         return 0.0
@@ -97,7 +110,7 @@ def build_volume_profile(
     if max_total <= 0:
         return empty
 
-    prec = 2 if ref > 100 else 4
+    prec = price_precision(ref)
     levels: List[Dict[str, Any]] = []
     for b in buckets:
         bid_share = (b["bid"] / b["total"] * 100.0) if b["total"] > 0 else 50.0
