@@ -83,6 +83,7 @@ class MarketState:
         self._states: Dict[str, Dict[str, ExchangeSymbolState]] = {}
         self._latest_snapshot: Dict[str, Any] = {}
         self._lock = asyncio.Lock()
+        self.funding_rates: Dict[str, Dict[str, float]] = {}
         for sym in self.symbols:
             self._states[sym] = {
                 ex: ExchangeSymbolState(exchange=ex, symbol=sym) for ex in EXCHANGES
@@ -122,10 +123,13 @@ class MarketState:
             return {}
         range_pct = _normalize_profile_range(profile_range_pct)
         await self._ensure_history(sym, tf, refresh=refresh_history)
-        exchanges = {
-            ex: st.snapshot_exchange(tf, bars_count, range_pct)
-            for ex, st in self._states[sym].items()
-        }
+        exchanges: Dict[str, Any] = {}
+        for ex, st in self._states[sym].items():
+            ex_snap = st.snapshot_exchange(tf, bars_count, range_pct)
+            fr = self.funding_rates.get(ex, {}).get(sym)
+            if fr is not None:
+                ex_snap["funding_rate"] = fr
+            exchanges[ex] = ex_snap
         snap = {
             "ts": int(time.time()),
             "symbol": sym,
