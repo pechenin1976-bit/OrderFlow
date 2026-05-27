@@ -11,6 +11,7 @@ import config
 from src.collectors.base import BaseCollector
 from src.collectors.bybit_symbols import instrument_id, symbol_from_instrument
 from src.symbols.instruments import from_native, usdt_instrument
+from src.symbols.spot_filter import bybit_spot_listed
 
 logger = logging.getLogger(__name__)
 
@@ -114,21 +115,20 @@ class BybitSpotCollector(BybitCollector):
     """Bybit spot: publicTrade + orderbook.50 через wss://.../spot."""
 
     exchange_id = "bybit_spot"
+    _active: frozenset[str] = frozenset()
 
     def _inst(self, sym: str) -> str:
         return usdt_instrument("bybit_spot", sym)
 
     async def _subscribe_all(self, ws: aiohttp.ClientWebSocketResponse) -> None:
-        args: List[str] = []
-        for sym in self.symbols:
+        n = 0
+        for sym in sorted(self._active):
             inst = self._inst(sym)
-            args.append(f"publicTrade.{inst}")
-            args.append(f"orderbook.50.{inst}")
-        batch = config.BYBIT_WS_SUB_BATCH
-        chunks = self._chunks(args, batch)
-        for chunk in chunks:
-            await ws.send_json({"op": "subscribe", "args": chunk})
-        logger.info("[bybit_spot] subscribed %s topics in %s batches", len(args), len(chunks))
+            await ws.send_json(
+                {"op": "subscribe", "args": [f"publicTrade.{inst}", f"orderbook.50.{inst}"]}
+            )
+            n += 2
+        logger.info("[bybit_spot] subscribed %s topics for %s symbols", n, len(self._active))
 
     async def _rest_orderbook(self, session: aiohttp.ClientSession, symbol: str) -> Tuple[List, List]:
         inst = self._inst(symbol)
@@ -141,13 +141,27 @@ class BybitSpotCollector(BybitCollector):
         return bids, asks
 
     async def run(self) -> None:
-        logger.info("[bybit_spot] connect")
+        self._active = await bybit_spot_listed(self.symbols)
+        for sym in self.symbols:
+            st = self._st(sym)
+            if sym in self._active:
+                st.error = ""
+            else:
+                st.connected = True
+                st.error = "not_listed"
+        logger.info("[bybit_spot] connect (%s symbols)", len(self._active))
         async with aiohttp.ClientSession() as session:
             async with session.ws_connect(WSS_SPOT, heartbeat=30) as ws:
                 await self._subscribe_all(ws)
-                for sym in self.symbols:
+                for sym in self._active:
                     self._st(sym).connected = True
                     self._st(sym).error = ""
+                    try:
+                        rb, ra = await self._rest_orderbook(session, sym)
+                        if rb or ra:
+                            self._st(sym).book.replace(rb, ra)
+                    except Exception as e:
+                        logger.debug("[bybit_spot] seed book %s: %s", sym, e)
                 async for msg in ws:
                     if msg.type != aiohttp.WSMsgType.TEXT:
                         if msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
@@ -189,5 +203,5 @@ class BybitSpotCollector(BybitCollector):
     def _sym_from_topic(self, topic: str, payload: dict) -> str:
         inst = payload.get("s") or topic.split(".")[-1] or ""
         base = from_native("bybit_spot", str(inst))
-        return base if base in self.symbols else ""
+        return base if base in self._active else ""
 
