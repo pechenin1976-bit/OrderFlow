@@ -12,6 +12,7 @@ from src.book.order_book import LocalOrderBook
 from src.compose.liquidity import compose_liquidity_zones
 from src.compose.volume_profile import build_volume_profile
 from src.symbols.price_scale import scale_exchange_snapshot
+from src.symbols.quote_currency import quote_currency
 
 
 EXCHANGES = ("binance", "bybit", "hyperliquid", "okx", "binance_spot", "bybit_spot", "okx_spot")
@@ -129,6 +130,11 @@ class MarketState:
             ex_snap = scale_exchange_snapshot(
                 ex, sym, st.snapshot_exchange(tf, bars_count, range_pct)
             )
+            quote = quote_currency(ex)
+            ex_snap["quote_currency"] = quote
+            prof = ex_snap.get("profile")
+            if prof:
+                prof["volume_unit"] = quote.lower()
             fr = self.funding_rates.get(ex, {}).get(sym)
             if fr is not None:
                 ex_snap["funding_rate"] = fr

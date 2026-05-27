@@ -148,6 +148,6 @@ def build_volume_profile(
         "source": "orderbook",
         "norm": "sqrt",
         "max_total_usdt": round(max_total_usdt, 2),
-        "volume_unit": "usdt",
+        "volume_unit": "usdt",  # notional; snapshot sets USDC on Hyperliquid
         "levels": levels,
     }

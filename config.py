@@ -69,6 +69,17 @@ BINANCE_SPOT_SYMBOL_MAP: dict[str, str] = {}
 BYBIT_SPOT_SYMBOL_MAP: dict[str, str] = {}
 OKX_SPOT_SYMBOL_MAP: dict[str, str] = {}
 
+# Котировка для notional (price×qty) в профиле ликвидности
+EXCHANGE_QUOTE_CURRENCY: dict[str, str] = {
+    "binance": "USDT",
+    "bybit": "USDT",
+    "hyperliquid": "USDC",
+    "okx": "USDT",
+    "binance_spot": "USDT",
+    "bybit_spot": "USDT",
+    "okx_spot": "USDT",
+}
+
 BYBIT_WS_SUB_BATCH = 10
 DEFAULT_TF = "15m"
 SNAPSHOT_BARS = int(os.getenv("ORDERFLOW_SNAPSHOT_BARS", "11"))
