@@ -4,7 +4,7 @@ Multi-exchange order flow and liquidity density for [Quantilan](https://quantila
 
 - **Ingest:** public WebSocket only (trades + order book) — Binance, Bybit, Hyperliquid, OKX
 - **Compose:** local L2 → liquidity zones + OHLCV from trades
-- **Out:** REST snapshot every ~2s for the website (license key from `@quantilan_bot`, plan `pro_orderflow`)
+- **Out:** REST snapshot (cached; publisher ~5s) for the website (license key from `@quantilan_bot`, plan `pro_orderflow`)
 
 ## Quick start
 
@@ -33,33 +33,52 @@ curl -H "Authorization: Bearer dev-token-change-me" \
 
 ## Deploy
 
-### First deploy
+Каталог: `/opt/orderflow` · сервис: `orderflow`  
+Скрипт [`deploy/setup_vps.sh`](deploy/setup_vps.sh) — установка и обновление (тот же one-liner, что у [Server](https://github.com/pechenin1976-bit/trading-server)); `cd` в `/opt/orderflow` для деплоя не нужен.
+
+### One-liner
+
+**Первый раз** (после клона — `.env`, см. ниже):
 
 ```bash
-git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
-cd /tmp/OrderFlow && bash deploy/setup_vps.sh
+cd /tmp && rm -rf OrderFlow && git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
+bash /tmp/OrderFlow/deploy/setup_vps.sh
+sudo nano /opt/orderflow/.env
+sudo systemctl restart orderflow
 ```
 
-The script syncs code to `/opt/orderflow`, runs `uv sync`, installs and enables the systemd unit, and restarts the service. On first run it will prompt to create `.env` if it doesn't exist.
+**Обновление кода** (не трогает `.env`, `settings/`, `logs/`):
 
 ```bash
-# Minimum .env
+cd /tmp && rm -rf OrderFlow && git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
+bash /tmp/OrderFlow/deploy/setup_vps.sh
+```
+
+Скрипт:
+
+- копирует код в `/opt/orderflow`
+- ставит зависимости (`uv sync`)
+- ставит systemd unit `orderflow` и перезапускает сервис (если `.env` уже есть)
+
+Минимум в `/opt/orderflow/.env`:
+
+```bash
 ORDERFLOW_LICENSE_SERVICE_TOKEN=<same as SERVICE_TOKEN in license server>
 ORDERFLOW_LICENSE_SERVER_URL=http://127.0.0.1:8000
-ORDERFLOW_API_KEYS=dev-token-change-me
 ```
 
-### Update
+Проверка / правки на сервере:
 
 ```bash
-cd /tmp/OrderFlow && git pull && bash deploy/setup_vps.sh
+cd /opt/orderflow
+sudo systemctl status orderflow
+sudo journalctl -u orderflow -f
+sudo nano .env
 ```
-
-`.env` and `settings/` are never overwritten by the script.
 
 ### nginx
 
-OrderFlow runs on the **same VPS as the license server** (`license.quantilan.com`). The existing nginx `server {}` block already handles SSL via Certbot. Add the OrderFlow location **before** the existing `location / {}` block:
+OrderFlow на **том же VPS**, что и license server (`license.quantilan.com`). В существующий `server {}` (SSL через Certbot) добавьте location **до** `location / {}`:
 
 ```bash
 sudo nano /etc/nginx/sites-available/license.quantilan.com
@@ -101,15 +120,8 @@ sudo nginx -t && sudo systemctl reload nginx
 Verify:
 
 ```bash
-curl -s -H "Authorization: Bearer dev-token-change-me" \
+curl -s -H "Authorization: Bearer YOUR_LICENSE_KEY" \
   "https://license.quantilan.com/api/orderflow/snapshot?symbol=BTC&tf=15m" | head -c 200
-```
-
-### Logs
-
-```bash
-sudo journalctl -u orderflow -f
-sudo systemctl status orderflow
 ```
 
 - Site: `quantilan/www/orderflow.html` polls `/api/orderflow/snapshot` via reverse proxy

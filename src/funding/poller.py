@@ -17,8 +17,9 @@ async def funding_loop(state: MarketState) -> None:
         try:
             rates = await fetch_all_funding(state.symbols)
             state.funding_rates = rates
+            await state.refresh_funding_in_cache()
             totals = {ex: len(v) for ex, v in rates.items()}
-            logger.debug("[funding] updated %s", totals)
+            logger.info("[funding] updated %s", totals)
         except Exception as e:
             logger.warning("[funding] loop error: %s", e)
         await asyncio.sleep(POLL_INTERVAL_SEC)

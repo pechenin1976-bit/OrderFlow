@@ -212,6 +212,25 @@ class MarketState:
         async with self._lock:
             return self._latest_snapshot_json.get(key)
 
+    async def refresh_funding_in_cache(self) -> None:
+        """Вшить актуальные funding_rate в уже закэшированные snapshot (без полного rebuild)."""
+        async with self._lock:
+            for key, snap in self._latest_snapshot.items():
+                sym = snap.get("symbol")
+                if not sym:
+                    continue
+                for ex, ex_snap in (snap.get("exchanges") or {}).items():
+                    if not isinstance(ex_snap, dict):
+                        continue
+                    fr = self.funding_rates.get(ex, {}).get(sym)
+                    if fr is not None:
+                        ex_snap["funding_rate"] = fr
+                    else:
+                        ex_snap.pop("funding_rate", None)
+                self._latest_snapshot_json[key] = json.dumps(
+                    snap, separators=(",", ":"), ensure_ascii=False
+                ).encode("utf-8")
+
 
 def _normalize_profile_range(value: float | str | None) -> float:
     if value is None:

@@ -1,9 +1,8 @@
 #!/bin/bash
-# Quantilan OrderFlow — установка и обновление на VPS
+# Quantilan OrderFlow — установка и обновление на VPS (как Server / CrCraft)
 #
-# Первый деплой:
-#   git clone https://github.com/pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
-#   cd /tmp/OrderFlow && bash deploy/setup_vps.sh
+#   cd /tmp && rm -rf OrderFlow && git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow
+#   bash /tmp/OrderFlow/deploy/setup_vps.sh
 #
 # Повторный запуск = обновление (код в /opt/orderflow, .env и settings/ не трогаем).
 
@@ -132,9 +131,11 @@ fi
 
 echo ""
 echo "=== Готово ==="
+echo "  Каталог:  $INSTALL_DIR"
 echo "  Логи:     sudo journalctl -u $SERVICE_NAME -f"
 echo "  Статус:   sudo systemctl status $SERVICE_NAME"
 echo ""
 echo "=== Следующее обновление ==="
-echo "  cd /tmp/OrderFlow && git pull && bash deploy/setup_vps.sh"
+echo "  cd /tmp && rm -rf OrderFlow && git clone git@github.com:pechenin1976-bit/OrderFlow.git /tmp/OrderFlow"
+echo "  bash /tmp/OrderFlow/deploy/setup_vps.sh"
 echo ""

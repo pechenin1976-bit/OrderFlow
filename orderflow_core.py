@@ -35,8 +35,21 @@ logger = logging.getLogger("orderflow")
 
 def load_settings(path: Path) -> dict:
     if not path.exists():
+        logger.warning("settings not found: %s — using defaults", path)
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    raw = path.read_text(encoding="utf-8").strip()
+    if not raw:
+        logger.warning("settings empty: %s — using defaults", path)
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error("settings invalid JSON (%s): %s — using defaults", path, e)
+        return {}
+    if not isinstance(data, dict):
+        logger.error("settings must be a JSON object: %s — using defaults", path)
+        return {}
+    return data
 
 
 async def main_async(settings: dict) -> None:
