@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import config
 from src.bars.ohlcv import MultiTfBars
@@ -79,11 +80,19 @@ class ExchangeSymbolState:
         }
 
 
+def resolve_symbol(symbol: str) -> str:
+    """Нормализация + alias (TON → GRAM)."""
+    sym = (symbol or "").upper()
+    return getattr(config, "SYMBOL_ALIASES", {}).get(sym, sym)
+
+
 class MarketState:
     def __init__(self, symbols: list[str]):
-        self.symbols = [s.upper() for s in symbols]
+        self.symbols = [resolve_symbol(s) for s in symbols]
         self._states: Dict[str, Dict[str, ExchangeSymbolState]] = {}
         self._latest_snapshot: Dict[str, Any] = {}
+        self._latest_snapshot_json: Dict[str, bytes] = {}
+        self._interest: Dict[str, float] = {}  # cache_key -> monotonic last touch
         self._lock = asyncio.Lock()
         self.funding_rates: Dict[str, Dict[str, float]] = {}
         for sym in self.symbols:
@@ -92,7 +101,7 @@ class MarketState:
             }
 
     def get(self, symbol: str, exchange: str) -> ExchangeSymbolState:
-        sym = symbol.upper()
+        sym = resolve_symbol(symbol)
         return self._states[sym][exchange]
 
     async def _ensure_history(self, sym: str, tf: str, *, refresh: bool = False) -> None:
@@ -112,6 +121,41 @@ class MarketState:
     def _cache_key(sym: str, tf: str, range_pct: float) -> str:
         return f"{sym.upper()}:{tf}:{range_pct:g}"
 
+    @staticmethod
+    def _parse_cache_key(key: str) -> Optional[Tuple[str, str, float]]:
+        parts = key.rsplit(":", 2)
+        if len(parts) != 3:
+            return None
+        sym, tf, range_s = parts
+        try:
+            return sym, tf, float(range_s)
+        except ValueError:
+            return None
+
+    def touch_interest(self, symbol: str, tf: str, profile_range_pct: float) -> None:
+        sym = resolve_symbol(symbol)
+        range_pct = _normalize_profile_range(profile_range_pct)
+        key = self._cache_key(sym, tf, range_pct)
+        self._interest[key] = time.monotonic()
+
+    def active_interest(self, ttl_sec: float | None = None) -> List[Tuple[str, str, float]]:
+        ttl = config.ACTIVE_INTEREST_TTL_SEC if ttl_sec is None else ttl_sec
+        now = time.monotonic()
+        expired: List[str] = []
+        active: List[Tuple[str, str, float]] = []
+        for key, ts in self._interest.items():
+            if now - ts > ttl:
+                expired.append(key)
+                continue
+            parsed = self._parse_cache_key(key)
+            if parsed:
+                active.append(parsed)
+        for key in expired:
+            self._interest.pop(key, None)
+            self._latest_snapshot.pop(key, None)
+            self._latest_snapshot_json.pop(key, None)
+        return active
+
     async def build_snapshot(
         self,
         symbol: str,
@@ -120,7 +164,7 @@ class MarketState:
         profile_range_pct: float | None = None,
         refresh_history: bool = False,
     ) -> Dict[str, Any]:
-        sym = symbol.upper()
+        sym = resolve_symbol(symbol)
         if sym not in self._states:
             return {}
         range_pct = _normalize_profile_range(profile_range_pct)
@@ -147,16 +191,26 @@ class MarketState:
             "exchanges": exchanges,
             "meta": {"publish_interval_sec": config.PUBLISH_INTERVAL_SEC},
         }
+        key = self._cache_key(sym, tf, range_pct)
+        body = json.dumps(snap, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         async with self._lock:
-            self._latest_snapshot[self._cache_key(sym, tf, range_pct)] = snap
+            self._latest_snapshot[key] = snap
+            self._latest_snapshot_json[key] = body
         return snap
 
     async def get_cached(
         self, symbol: str, tf: str, profile_range_pct: float
     ) -> Optional[Dict[str, Any]]:
-        key = self._cache_key(symbol, tf, profile_range_pct)
+        key = self._cache_key(resolve_symbol(symbol), tf, _normalize_profile_range(profile_range_pct))
         async with self._lock:
             return self._latest_snapshot.get(key)
+
+    async def get_cached_json(
+        self, symbol: str, tf: str, profile_range_pct: float
+    ) -> Optional[bytes]:
+        key = self._cache_key(resolve_symbol(symbol), tf, _normalize_profile_range(profile_range_pct))
+        async with self._lock:
+            return self._latest_snapshot_json.get(key)
 
 
 def _normalize_profile_range(value: float | str | None) -> float:

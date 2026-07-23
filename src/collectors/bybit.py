@@ -57,7 +57,7 @@ class BybitCollector(BaseCollector):
         if not st.book.bids and not st.book.asks:
             return
         if bids or asks:
-            st.book.apply_delta(bids, asks)
+            st.book.apply_delta(bids, asks, max_levels=config.BOOK_MAX_LEVELS)
 
     async def run(self) -> None:
         logger.info("[bybit] connect")

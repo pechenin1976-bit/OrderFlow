@@ -29,6 +29,10 @@ async def validate_license_key(key: str) -> bool:
 
     ok, expires_at = await _fetch(key)
     _cache[key] = (now + config.LICENSE_CACHE_SEC, ok, expires_at)
+    if len(_cache) > 512:
+        expired = [k for k, (exp, _, _) in _cache.items() if exp <= now]
+        for k in expired:
+            _cache.pop(k, None)
     return ok
 
 

@@ -9,7 +9,7 @@ from typing import List
 
 import aiohttp
 
-from src.state.market_state import ExchangeSymbolState, MarketState
+from src.state.market_state import ExchangeSymbolState, MarketState, resolve_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +23,11 @@ class BaseCollector(abc.ABC):
 
     def __init__(self, state: MarketState, symbols: List[str]):
         self.state = state
-        self.symbols = [s.upper() for s in symbols]
+        self.symbols = [resolve_symbol(s) for s in symbols]
         self._task: asyncio.Task | None = None
 
     def _st(self, symbol: str) -> ExchangeSymbolState:
-        return self.state.get(symbol, self.exchange_id)
+        return self.state.get(resolve_symbol(symbol), self.exchange_id)
 
     @abc.abstractmethod
     async def run(self) -> None:

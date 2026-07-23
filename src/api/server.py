@@ -8,7 +8,7 @@ from aiohttp import web
 import config
 from src.api.auth import auth_middleware
 from src.api.cors import cors_middleware
-from src.state.market_state import MarketState
+from src.state.market_state import MarketState, resolve_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,8 @@ def create_app(state: MarketState) -> web.Application:
         })
 
     async def snapshot(request: web.Request) -> web.Response:
-        sym = (request.query.get("symbol") or config.DEFAULT_SYMBOLS[0]).upper()
+        raw_sym = (request.query.get("symbol") or config.DEFAULT_SYMBOLS[0]).upper()
+        sym = resolve_symbol(raw_sym)
         tf = request.query.get("tf") or config.DEFAULT_TF
         range_pct = request.query.get("range") or request.query.get("profile_range_pct")
         if tf not in config.TF_SECONDS:
@@ -48,9 +49,33 @@ def create_app(state: MarketState) -> web.Application:
 
         range_norm = _normalize_profile_range(range_pct)
         refresh = request.query.get("refresh", "").lower() in ("1", "true", "yes")
+        if refresh:
+            token = request.get("api_token", "")
+            from src.api.auth import _check_rate
+            if not _check_rate(f"refresh:{token or 'anon'}"):
+                return web.json_response({"error": "rate_limit"}, status=429)
+
+        state.touch_interest(sym, tf, range_norm)
+
+        if not refresh:
+            cached = await state.get_cached_json(sym, tf, range_norm)
+            if cached is not None:
+                return web.Response(
+                    body=cached,
+                    content_type="application/json",
+                    charset="utf-8",
+                )
+
         snap = await state.build_snapshot(
             sym, tf, config.DEFAULT_BARS_COUNT, range_norm, refresh_history=refresh
         )
+        body = await state.get_cached_json(sym, tf, range_norm)
+        if body is not None:
+            return web.Response(
+                body=body,
+                content_type="application/json",
+                charset="utf-8",
+            )
         return web.json_response(snap)
 
     async def funding(_request: web.Request) -> web.Response:

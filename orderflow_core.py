@@ -19,6 +19,7 @@ load_dotenv(ROOT / ".env")
 
 import config
 from src.api.server import start_api
+from src.security_config import validate_startup_config
 from src.collectors.registry import start_all
 from src.funding.poller import funding_loop
 from src.history.bootstrap import seed_all
@@ -65,6 +66,7 @@ async def main_async(settings: dict) -> None:
 
 
 def main() -> None:
+    validate_startup_config()
     parser = argparse.ArgumentParser(description="OrderFlow service")
     parser.add_argument(
         "--settings",

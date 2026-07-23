@@ -16,7 +16,13 @@ class LocalOrderBook:
         self.asks = {p: q for p, q in asks if q > 0}
         self.last_update_ms = ts_ms
 
-    def apply_delta(self, bids: List[Tuple[float, float]], asks: List[Tuple[float, float]], ts_ms: int = 0) -> None:
+    def apply_delta(
+        self,
+        bids: List[Tuple[float, float]],
+        asks: List[Tuple[float, float]],
+        ts_ms: int = 0,
+        max_levels: int | None = None,
+    ) -> None:
         for p, q in bids:
             if q <= 0:
                 self.bids.pop(p, None)
@@ -28,6 +34,17 @@ class LocalOrderBook:
             else:
                 self.asks[p] = q
         self.last_update_ms = ts_ms
+        if max_levels is not None and max_levels > 0:
+            self.prune(max_levels)
+
+    def prune(self, max_levels: int) -> None:
+        """Оставить только top-N уровней с каждой стороны (по цене)."""
+        if len(self.bids) > max_levels:
+            keep = sorted(self.bids.keys(), reverse=True)[:max_levels]
+            self.bids = {p: self.bids[p] for p in keep}
+        if len(self.asks) > max_levels:
+            keep = sorted(self.asks.keys())[:max_levels]
+            self.asks = {p: self.asks[p] for p in keep}
 
     def mid_price(self) -> float:
         if not self.bids or not self.asks:

@@ -17,7 +17,14 @@ def display_divisor(exchange: str, symbol: str) -> float:
     if exchange not in _FUTURES_EXCHANGES:
         return 1.0
     sym = symbol.upper()
-    if sym in config.BINANCE_SYMBOL_MAP or sym in config.HYPERLIQUID_SYMBOL_MAP:
+    if exchange == "hyperliquid":
+        native = config.HYPERLIQUID_SYMBOL_MAP.get(sym, sym)
+        if native.startswith("k") and native != sym:
+            return 1000.0
+        return 1.0
+    # Binance/Bybit futures: только 1000-prefixed (PEPE→1000PEPE), не GRAM→TON
+    native = config.BINANCE_SYMBOL_MAP.get(sym, sym)
+    if native.startswith("1000"):
         return 1000.0
     return 1.0
 

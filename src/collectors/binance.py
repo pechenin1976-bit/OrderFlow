@@ -129,7 +129,9 @@ class BinanceCollector(BaseCollector):
 
                             else:
 
-                                st.book.apply_delta(bids, asks, int(data.get("E", 0)))
+                                st.book.apply_delta(
+                                    bids, asks, int(data.get("E", 0)), max_levels=config.BOOK_MAX_LEVELS
+                                )
 
                             if st.last_price <= 0:
 
